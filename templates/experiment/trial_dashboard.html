@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alarm Management Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-mono min-h-screen flex flex-col p-4 space-y-4 select-none relative">
+
+  <!-- TOP HEADER -->
+  <header class="flex items-center justify-between border-b border-slate-800 pb-3">
+    <div>
+      <h1 class="text-xl font-bold tracking-wider text-sky-400">ALARM MANAGEMENT DASHBOARD</h1>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <div class="bg-slate-900 border border-slate-800 px-4 py-2 rounded flex items-center gap-3">
+        <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-400">TIME:</span>
+            <span id="live-clock" class="text-lg font-bold text-sky-400 tabular-nums">--:--:--</span>
+            <span class="text-xs text-slate-500">(Reading <span id="step-counter" class="text-slate-300">1</span>)</span>
+          </div>
+          <span class="text-[9px] text-slate-500">LIVE TELEMETRY STREAM</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- METACOGNITIVE BANNER (ADAPTIVE_META) -->
+  {% if condition == 'ADAPTIVE_META' %}
+  <section id="metacognitive-banner" class="bg-[#121824] border border-amber-500/40 rounded-lg p-3 shadow-lg flex items-center justify-between shrink-0">
+    <div class="flex items-center gap-4">
+      <div id="loa-badge-container" class="flex flex-col items-center justify-center bg-amber-500/20 border border-amber-500 px-3 py-1.5 rounded">
+        <span class="text-[9px] text-amber-300 font-bold tracking-wider uppercase">AUTHORITY</span>
+        <span id="loa-badge" class="text-xl font-bold text-amber-400 tabular-nums">LoA 8 / 10</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-6 border-l border-slate-800 pl-6 text-right">
+      <div>
+        <span class="text-[10px] text-slate-500 block uppercase">Situational Novelty</span>
+        <span id="val-novelty" class="text-amber-400 font-bold text-sm tabular-nums">0.05</span>
+      </div>
+      <div>
+        <span class="text-[10px] text-slate-500 block uppercase">AI Risk Score</span>
+        <span id="val-risk" class="text-rose-400 font-bold text-sm tabular-nums">0.10</span>
+      </div>
+      <div>
+        <span class="text-[10px] text-slate-500 block uppercase">Operator Workload</span>
+        <span id="val-workload" class="text-sky-400 font-bold text-sm tabular-nums">0.20</span>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- HTMX ACTION RESPONSE FEEDBACK -->
+  <div id="action-response" class="min-h-[28px] text-xs text-center font-bold"></div>
+
+  <!-- MAIN DASHBOARD GRID -->
+  <main class="flex-1 flex flex-col justify-between space-y-4">
+    <section class="bg-slate-900/60 border border-slate-800 rounded-lg p-4 flex-1 flex flex-col justify-between space-y-4">
+      <div>
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+          <h2 class="text-sm font-bold text-slate-300 flex items-center gap-2">
+            <span>📈</span> TELEMETRY STREAM ({{ dataset_config.sensors|length }} VARIABLES)
+          </h2>
+          <span class="text-[10px] text-emerald-400 font-bold animate-pulse">● LIVE</span>
+        </div>
+
+        <!-- Dynamic Sensor Chart Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+          {% for sensor in dataset_config.sensors %}
+          <div id="card-{{ sensor.key }}" class="bg-slate-950 border border-slate-800 p-2.5 rounded flex flex-col justify-between transition-colors duration-200">
+            <div class="flex justify-between items-baseline">
+              <div class="flex items-center gap-1.5">
+                <span id="alarm-badge-{{ sensor.key }}" class="hidden text-[9px] bg-rose-600 text-white font-bold px-1 rounded animate-pulse">ALARM</span>
+                <span class="text-[10px] text-slate-400 font-bold">{{ sensor.tag }} {{ sensor.label }}</span>
+              </div>
+              <span id="s-val-{{ sensor.key }}" class="text-sm font-bold tabular-nums" style="color: {{ sensor.color }}">
+                -- {{ sensor.unit }}
+              </span>
+            </div>
+            <div class="h-20 w-full mt-2 relative">
+              <svg id="chart-{{ sensor.key }}" class="w-full h-full overflow-visible" viewBox="0 0 200 50" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="grad-{{ sensor.key }}" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="{{ sensor.color }}" stop-opacity="0.3"/>
+                    <stop offset="100%" stop-color="{{ sensor.color }}" stop-opacity="0.0"/>
+                  </linearGradient>
+                </defs>
+                <path id="area-{{ sensor.key }}" fill="url(#grad-{{ sensor.key }})" d="" />
+                <path id="line-{{ sensor.key }}" fill="none" stroke="{{ sensor.color }}" stroke-width="2" d="" />
+              </svg>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Trigger Emergency Stop Confirmation Modal -->
+      <button type="button" onclick="openAlarmModal()"
+              class="w-full bg-rose-900/80 hover:bg-rose-800 border border-rose-600 text-rose-100 font-bold py-4 rounded text-base transition-all shadow-lg active:scale-[0.98] tracking-wide">
+        🚨 Emergency Stop
+      </button>
+
+      <!-- Hidden Form for Manual Alarm -->
+      <form id="form-alarm" hx-post="{% url 'submit_action' trial.id %}" hx-target="#action-response" class="hidden">
+        {% csrf_token %}
+        <input type="hidden" name="time_step" id="form-step-alarm" value="1">
+        <input type="hidden" name="action_type" value="RAISE_ALARM">
+      </form>
+
+      <!-- Hidden Form for System Action (Approve / Override) -->
+      <form id="form-action" hx-post="{% url 'submit_action' trial.id %}" hx-target="#action-response" class="hidden">
+        {% csrf_token %}
+        <input type="hidden" name="time_step" id="form-step" value="1">
+        <input type="hidden" name="action_type" id="form-action-type" value="APPROVE">
+      </form>
+    </section>
+  </main>
+
+  <!-- MANUAL EMERGENCY STOP MODAL -->
+  <div id="alarm-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-slate-900 border-2 border-rose-600 p-6 rounded-xl max-w-md w-full shadow-2xl space-y-4 text-center">
+      <div class="flex justify-center">
+        <div class="h-12 w-12 rounded-full bg-rose-600/20 text-rose-500 border border-rose-500/50 flex items-center justify-center text-2xl font-bold animate-pulse">
+          ⚠️
+        </div>
+      </div>
+      <div>
+        <h3 class="text-lg font-bold text-slate-100">CONFIRM EMERGENCY STOP</h3>
+        <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+          Are you sure you want to trigger an Emergency Stop? This action will halt current telemetry operations and proceed to the next sequence.
+        </p>
+      </div>
+      <div class="flex items-center gap-3 pt-2">
+        <button type="button" onclick="closeAlarmModal()"
+                class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 font-bold py-3 rounded text-sm transition-all">
+          NO, CANCEL
+        </button>
+        <button type="button" onclick="confirmAlarmSubmission()"
+                class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded text-sm transition-all shadow-lg active:scale-[0.98]">
+          YES, STOP SYSTEM
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SYSTEM AUTOMATED INTERVENTION MODAL -->
+  <div id="system-stop-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-slate-900 border-2 border-amber-500 p-6 rounded-xl max-w-md w-full shadow-2xl space-y-4 text-center">
+      <div class="flex justify-center">
+        <div class="h-12 w-12 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/50 flex items-center justify-center text-2xl font-bold animate-pulse">
+          🛡️
+        </div>
+      </div>
+      <div>
+        <h3 class="text-lg font-bold text-amber-400">SYSTEM INTERVENTION REQUIRED</h3>
+        <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+          High-risk telemetry anomaly detected. Predicted Root Cause:
+        </p>
+        <div id="system-reason" class="text-sm font-bold text-amber-300 bg-amber-950/40 border border-amber-800 p-2 rounded mt-2">
+          Evaluating...
+        </div>
+      </div>
+      <div class="flex items-center gap-3 pt-2">
+        <!-- OVERRIDE BUTTON TRIGGERS CONFIRMATION MODAL -->
+        <button type="button" onclick="handleOverrideClick()"
+                class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 font-bold py-3 rounded text-sm transition-all">
+          OVERRIDE SYSTEM
+        </button>
+        <button type="button" onclick="submitAction('APPROVE')"
+                class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded text-sm transition-all shadow-lg active:scale-[0.98]">
+          APPROVE STOP
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OVERRIDE CONFIRMATION MODAL -->
+  <div id="override-confirm-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-slate-900 border-2 border-amber-500 p-6 rounded-xl max-w-md w-full shadow-2xl space-y-4 text-center">
+      <div class="flex justify-center">
+        <div class="h-12 w-12 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/50 flex items-center justify-center text-2xl font-bold animate-pulse">
+          ⚠️
+        </div>
+      </div>
+      <div>
+        <h3 class="text-lg font-bold text-amber-400">CONFIRM OVERRIDE & DEMOTE LoA</h3>
+        <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+          Are you sure you want to override? Overriding the system will <span class="text-amber-400 font-bold">reduce authority to Level 2 (Manual Monitoring)</span>.
+        </p>
+        <p class="text-xs text-rose-400 font-bold mt-2">
+          You will now be solely responsible for detecting anomalies and executing stops.
+        </p>
+      </div>
+      <div class="flex items-center gap-3 pt-2">
+        <button type="button" onclick="cancelOverride()"
+                class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 font-bold py-3 rounded text-sm transition-all">
+          BACK TO DECISION
+        </button>
+        <button type="button" onclick="confirmOverrideSubmission()"
+                class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded text-sm transition-all shadow-lg active:scale-[0.98]">
+          CONFIRM OVERRIDE
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SENSOR CONFIG DATA & SCRIPT -->
+  {{ dataset_config.sensors|json_script:"sensor-config-data" }}
+  <script>
+    let systemModalOpened = false;
+    let isOverriddenLocally = false;
+
+    function openAlarmModal() {
+      const modal = document.getElementById('alarm-modal');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeAlarmModal() {
+      const modal = document.getElementById('alarm-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function confirmAlarmSubmission() {
+      submitAction('RAISE_ALARM');
+    }
+
+    // Step 1: Open Override Confirmation Modal
+    function handleOverrideClick() {
+      const sysModal = document.getElementById('system-stop-modal');
+      if (sysModal) sysModal.classList.add('hidden');
+
+      const overrideModal = document.getElementById('override-confirm-modal');
+      if (overrideModal) overrideModal.classList.remove('hidden');
+    }
+
+    // Step 2: Cancel Override and Return to Decision Modal
+    function cancelOverride() {
+      const overrideModal = document.getElementById('override-confirm-modal');
+      if (overrideModal) overrideModal.classList.add('hidden');
+
+      const sysModal = document.getElementById('system-stop-modal');
+      if (sysModal) sysModal.classList.remove('hidden');
+    }
+
+    // Step 3: Finalize Override Submission
+    function confirmOverrideSubmission() {
+      const overrideModal = document.getElementById('override-confirm-modal');
+      if (overrideModal) overrideModal.classList.add('hidden');
+
+      // Permanently lock pop-up re-triggering locally for this trial
+      isOverriddenLocally = true;
+      systemModalOpened = true;
+
+      submitAction('OVERRIDE_CONFIRMED');
+    }
+
+    function submitAction(actionType) {
+      // Close all open modals
+      closeAlarmModal();
+      document.getElementById('system-stop-modal')?.classList.add('hidden');
+      document.getElementById('override-confirm-modal')?.classList.add('hidden');
+
+      const currentStep = document.getElementById('step-counter')?.innerText || '1';
+
+      // 1. Synchronize time steps
+      ['form-step', 'form-step-alarm'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.value = currentStep;
+      });
+
+      // 2. Safely update action_type input
+      const actionInput = document.getElementById('form-action-type');
+      if (actionInput) {
+        actionInput.value = actionType;
+      }
+
+      // 3. Trigger HTMX submission
+      if (actionType === 'RAISE_ALARM') {
+        htmx.trigger('#form-alarm', 'submit');
+      } else {
+        htmx.trigger('#form-action', 'submit', { values: { action_type: actionType, time_step: currentStep } });
+      }
+    }
+
+    function updateClock() {
+      const clockEl = document.getElementById('live-clock');
+      if (clockEl) {
+        const now = new Date();
+        clockEl.innerText = now.toTimeString().split(' ')[0];
+      }
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    const MAX_HISTORY = 50;
+    const sensorConfigEl = document.getElementById('sensor-config-data');
+    const sensors = sensorConfigEl ? JSON.parse(sensorConfigEl.textContent) : [];
+
+    window.sensorHistory = {};
+    sensors.forEach(s => {
+      window.sensorHistory[s.key] = [];
+    });
+
+    function renderSvgTrend(lineId, areaId, history, width = 200, height = 50) {
+      if (!history || history.length < 2) return;
+
+      let minVal = Math.min(...history);
+      let maxVal = Math.max(...history);
+      if (maxVal === minVal) { maxVal += 1.0; minVal -= 1.0; }
+      const range = maxVal - minVal;
+
+      const points = history.map((val, idx) => {
+        const x = (idx / (MAX_HISTORY - 1)) * width;
+        const normalizedY = (val - minVal) / range;
+        const y = height - (normalizedY * (height - 10)) - 5;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      });
+
+      const lineD = "M " + points.join(" L ");
+      const areaD = `${lineD} L ${width.toFixed(1)},${height} L 0,${height} Z`;
+
+      const lineEl = document.getElementById(lineId);
+      const areaEl = document.getElementById(areaId);
+      if (lineEl) lineEl.setAttribute("d", lineD);
+      if (areaEl) areaEl.setAttribute("d", areaD);
+    }
+
+    const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+    const socket = new WebSocket(`${wsScheme}://${window.location.host}/ws/trial/{{ trial.id }}/`);
+
+    socket.onmessage = function(event) {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.trial_complete) {
+          window.location.href = data.next_url;
+          return;
+        }
+
+        if (data.time_step !== undefined) {
+          const stepEl = document.getElementById('step-counter');
+          const formStep = document.getElementById('form-step');
+          const formStepAlarm = document.getElementById('form-step-alarm');
+
+          if (stepEl) stepEl.innerText = data.time_step;
+          if (formStep) formStep.value = data.time_step;
+          if (formStepAlarm) formStepAlarm.value = data.time_step;
+        }
+
+        if (data.assigned_loa !== undefined) {
+          const loaBadge = document.getElementById('loa-badge');
+          if (loaBadge) {
+            loaBadge.innerText = `LoA ${data.assigned_loa} / 10`;
+          }
+        }
+
+        if (data.situational_novelty !== undefined) {
+          const nov = document.getElementById('val-novelty');
+          const risk = document.getElementById('val-risk');
+          const work = document.getElementById('val-workload');
+
+          if (nov) nov.innerText = Number(data.situational_novelty).toFixed(2);
+          if (risk) risk.innerText = Number(data.ai_risk).toFixed(2);
+          if (work) work.innerText = Number(data.operator_workload).toFixed(2);
+        }
+
+        const telemetryData = data.vars || data.telemetry || data;
+        const alarmsData = data.alarms || {};
+
+        sensors.forEach(sensor => {
+          let val = telemetryData[sensor.key];
+
+          if (val === undefined && telemetryData) {
+            const lowerKey = sensor.key.toLowerCase();
+            const matchedKey = Object.keys(telemetryData).find(k => k.toLowerCase() === lowerKey);
+            if (matchedKey) val = telemetryData[matchedKey];
+          }
+
+          if (val !== undefined && val !== null && !isNaN(val)) {
+            const numVal = parseFloat(val);
+            const readout = document.getElementById(`s-val-${sensor.key}`);
+            if (readout) readout.innerText = `${numVal.toFixed(2)} ${sensor.unit || ''}`;
+
+            if (!window.sensorHistory[sensor.key]) {
+              window.sensorHistory[sensor.key] = [];
+            }
+
+            window.sensorHistory[sensor.key].push(numVal);
+            if (window.sensorHistory[sensor.key].length > MAX_HISTORY) {
+              window.sensorHistory[sensor.key].shift();
+            }
+
+            renderSvgTrend(`line-${sensor.key}`, `area-${sensor.key}`, window.sensorHistory[sensor.key]);
+          }
+
+          const isAlarming = alarmsData[`${sensor.key}_alarm`] || false;
+          const cardEl = document.getElementById(`card-${sensor.key}`);
+          const badgeEl = document.getElementById(`alarm-badge-${sensor.key}`);
+
+          if (cardEl && badgeEl) {
+            if (isAlarming) {
+              cardEl.classList.remove('border-slate-800', 'bg-slate-950');
+              cardEl.classList.add('border-rose-600', 'bg-rose-950/30');
+              badgeEl.classList.remove('hidden');
+            } else {
+              cardEl.classList.remove('border-rose-600', 'bg-rose-950/30');
+              cardEl.classList.add('border-slate-800', 'bg-slate-950');
+              badgeEl.classList.add('hidden');
+            }
+          }
+        });
+
+        // Trigger System Intervention Modal only if NOT overridden
+        if (data.system_triggered_stop && !systemModalOpened && !isOverriddenLocally) {
+          systemModalOpened = true;
+          const reasonEl = document.getElementById('system-reason');
+          if (reasonEl) {
+            reasonEl.innerText = data.suggested_root_cause || data.predicted_root_cause || "High Risk Anomaly Detected";
+          }
+          document.getElementById('system-stop-modal')?.classList.remove('hidden');
+        }
+
+      } catch (err) {
+        console.error("Error parsing WebSocket frame:", err);
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POST-TRIAL EVALUATION | NASA Task Load Index</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 md:p-8 flex items-center justify-center font-sans text-xs text-slate-800">
+
+  <div class="max-w-2xl w-full mx-auto space-y-6">
+
+    <!-- TOP HEADER BANNER -->
+    <header class="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
+      <div>
+        <span class="text-[10px] text-sky-600 font-bold uppercase tracking-widest block">POST-EXPERIMENT EVALUATION</span>
+        <h1 class="text-base font-bold text-slate-900">NASA Task Load Index (NASA-TLX)</h1>
+      </div>
+{#      <div class="text-right">#}
+{#        <span class="text-[10px] text-slate-400 uppercase block">Participant ID</span>#}
+{#        <span class="text-xs font-bold text-slate-700">{{ participant.participant_uuid|default:participant.id }}</span>#}
+{#      </div>#}
+    </header>
+
+    <!-- FORM CONTAINER CARD -->
+    <div class="bg-white border border-slate-200 rounded-xl p-6 space-y-6 shadow-sm">
+      
+      <div>
+        <h2 class="text-sm font-bold text-slate-900">Subjective Workload Assessment</h2>
+        <p class="text-slate-500 text-[11px] mt-1 leading-relaxed">
+          Rate your cognitive workload experienced during the preceding alarm management scenario on a scale from 0 to 100.
+        </p>
+      </div>
+
+<form action="{% url 'nasa_tlx' participant_id=participant.id %}" method="post" class="space-y-4">
+  {% csrf_token %}
+
+  <!-- 1. Mental Demand -->
+  <div class="space-y-2 bg-slate-50 border border-slate-200 p-4 rounded-lg">
+    <div class="flex justify-between items-center">
+      <label class="font-bold text-slate-800 text-xs">1. Mental Demand</label>
+      <span id="lbl-mental" class="font-bold text-sky-600 tabular-nums text-sm">50</span>
+    </div>
+    <p class="text-[10px] text-slate-500 leading-snug">
+      How much mental and perceptual activity was required?
+    </p>
+    <div class="pt-1">
+      <input type="range" name="mental_demand" min="0" max="100" value="50"
+             class="w-full h-1.5 bg-slate-200 rounded appearance-none cursor-pointer accent-sky-600"
+             oninput="document.getElementById('lbl-mental').innerText = this.value">
+      <div class="flex justify-between text-[9px] text-slate-400 mt-1 uppercase font-bold">
+        <span>Low</span>
+        <span>High</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Physical Demand -->
+  <div class="space-y-2 bg-slate-50 border border-slate-200 p-4 rounded-lg">
+    <div class="flex justify-between items-center">
+      <label class="font-bold text-slate-800 text-xs">2. Physical Demand</label>
+      <span id="lbl-physical" class="font-bold text-sky-600 tabular-nums text-sm">50</span>
+    </div>
+    <p class="text-[10px] text-slate-500 leading-snug">
+      How much physical activity was required (e.g., pushing, pulling, turning, controlling)?
+    </p>
+    <div class="pt-1">
+      <input type="range" name="physical_demand" min="0" max="100" value="50"
+             class="w-full h-1.5 bg-slate-200 rounded appearance-none cursor-pointer accent-sky-600"
+             oninput="document.getElementById('lbl-physical').innerText = this.value">
+      <div class="flex justify-between text-[9px] text-slate-400 mt-1 uppercase font-bold">
+        <span>Low</span>
+        <span>High</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Temporal Demand -->
+  <div class="space-y-2 bg-slate-50 border border-slate-200 p-4 rounded-lg">
+    <div class="flex justify-between items-center">
+      <label class="font-bold text-slate-800 text-xs">3. Temporal Demand</label>
+      <span id="lbl-temporal" class="font-bold text-sky-600 tabular-nums text-sm">50</span>
+    </div>
+    <p class="text-[10px] text-slate-500 leading-snug">
+      How much time pressure did you feel due to the rate or pace at which the tasks occurred?
+    </p>
+    <div class="pt-1">
+      <input type="range" name="temporal_demand" min="0" max="100" value="50"
+             class="w-full h-1.5 bg-slate-200 rounded appearance-none cursor-pointer accent-sky-600"
+             oninput="document.getElementById('lbl-temporal').innerText = this.value">
+      <div class="flex justify-between text-[9px] text-slate-400 mt-1 uppercase font-bold">
+        <span>Low</span>
+        <span>High</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Performance -->
+  <div class="space-y-2 bg-slate-50 border border-slate-200 p-4 rounded-lg">
+    <div class="flex justify-between items-center">
+      <label class="font-bold text-slate-800 text-xs">4. Perceived Performance</label>
+      <span id="lbl-performance" class="font-bold text-sky-600 tabular-nums text-sm">50</span>
+    </div>
+    <p class="text-[10px] text-slate-500 leading-snug">
+      How successful were you in accomplishing the goals set by the task?
+    </p>
+    <div class="pt-1">
+      <input type="range" name="performance" min="0" max="100" value="50"
+             class="w-full h-1.5 bg-slate-200 rounded appearance-none cursor-pointer accent-sky-600"
+             oninput="document.getElementById('lbl-performance').innerText = this.value">
+      <div class="flex justify-between text-[9px] text-slate-400 mt-1 uppercase font-bold">
+        <span>Failure</span>
+        <span>Perfect</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Effort -->
+  <div class="space-y-2 bg-slate-50 border border-slate-200 p-4 rounded-lg">
+    <div class="flex justify-between items-center">
+      <label class="font-bold text-slate-800 text-xs">5. Effort</label>
+      <span id="lbl-effort" class="font-bold text-sky-600 tabular-nums text-sm">50</span>
+    </div>
+    <p class="text-[10px] text-slate-500 leading-snug">
+      How hard did you have to work (mentally and physically) to accomplish your level of performance?
+    </p>
+    <div class="pt-1">
+      <input type="range" name="effort" min="0" max="100" value="50"
+             class="w-full h-1.5 bg-slate-200 rounded appearance-none cursor-pointer accent-sky-600"
+             oninput="document.getElementById('lbl-effort').innerText = this.value">
+      <div class="flex justify-between text-[9px] text-slate-400 mt-1 uppercase font-bold">
+        <span>Low</span>
+        <span>High</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Frustration -->
+  <div class="space-y-2 bg-slate-50 border border-slate-200 p-4 rounded-lg">
+    <div class="flex justify-between items-center">
+      <label class="font-bold text-slate-800 text-xs">6. Frustration Level</label>
+      <span id="lbl-frustration" class="font-bold text-sky-600 tabular-nums text-sm">50</span>
+    </div>
+    <p class="text-[10px] text-slate-500 leading-snug">
+      How insecure, discouraged, irritated, stressed, and annoyed did you feel during the task?
+    </p>
+    <div class="pt-1">
+      <input type="range" name="frustration" min="0" max="100" value="50"
+             class="w-full h-1.5 bg-slate-200 rounded appearance-none cursor-pointer accent-sky-600"
+             oninput="document.getElementById('lbl-frustration').innerText = this.value">
+      <div class="flex justify-between text-[9px] text-slate-400 mt-1 uppercase font-bold">
+        <span>Low</span>
+        <span>High</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBMIT BUTTON -->
+  <div class="pt-2">
+    <button type="submit"
+            class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-lg text-sm transition-all shadow active:scale-[0.99] tracking-wide flex items-center justify-center gap-2">
+      <span>SUBMIT EVALUATION &amp; PROCEED</span>
+      <span>→</span>
+    </button>
+  </div>
+
+</form>

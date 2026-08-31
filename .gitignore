@@ -1,0 +1,15 @@
+# Virtual Environment Folders
+lib/
+bin/
+include/
+share/
+pyvenv.cfg
+
+# Standard Ignores
+venv/
+.venv/
+env/
+*.sqlite3
+__pycache__/
+.DS_Store
+.idea/

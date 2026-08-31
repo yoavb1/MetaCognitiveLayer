@@ -1,0 +1,11 @@
+COLUMN_NAME,VARIABLE_KEY,DESCRIPTION,UNIT,TYPE,Column_Index
+Feed_Flow_A,XMEAS(1),A Feed Flow (Stream 1),kscmh,Measured,0
+Reactor_Pressure,XMEAS(7),Reactor Pressure,kPa gauge,Measured,6
+Reactor_Level,XMEAS(8),Reactor Level,%,Measured,7
+Reactor_Temp,XMEAS(9),Reactor Temperature,Deg C,Measured,8
+Separator_Temp,XMEAS(11),Separator Temperature,Deg C,Measured,10
+Separator_Level,XMEAS(12),Separator Level,%,Measured,11
+Stripper_Level,XMEAS(15),Stripper Level,%,Measured,14
+Stripper_Temp,XMEAS(18),Stripper Temperature,Deg C,Measured,17
+Reactor_Coolant_Valve,XMV(10),Reactor Coolant Valve,%,Manipulated,50
+Separator_Coolant_Valve,XMV(11),Separator Coolant Valve,%,Manipulated,51

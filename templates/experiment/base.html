@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#0b0f17] text-slate-200">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}DCS-100 | Tennessee Eastman Process Control{% endblock %}</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .tabular-nums { font-variant-numeric: tabular-nums; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #0b0f17; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+    .scada-grid {
+      background-image: linear-gradient(to right, rgba(30, 41, 59, 0.15) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(30, 41, 59, 0.15) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full flex flex-col font-sans antialiased scada-grid select-none" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+  <!-- PERMANENT DCS HEADER BAR -->
+  <header class="h-12 bg-[#090d14] border-b border-slate-800 px-4 flex items-center justify-between shrink-0 text-xs font-mono">
+    <div class="flex items-center gap-6">
+      <div class="flex items-center gap-2">
+        <div id="plc-status-dot" class="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
+        <span class="font-bold tracking-wider text-slate-100">TEP PLANT UNIT-100</span>
+        <span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">ONLINE</span>
+      </div>
+
+      <div class="hidden md:flex items-center gap-4 text-slate-400 border-l border-slate-800 pl-6">
+        <span>MODE: <strong class="text-sky-400">RUNNING</strong></span>
+        <span>PARTICIPANT: <strong class="text-slate-200">{{ session.participant_id|default:"P-0104" }}</strong></span>
+        <span>COND: <strong class="text-amber-400">{{ session.get_assigned_condition_display|default:"ADAPTIVE METACOGNITIVE" }}</strong></span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 bg-slate-950 px-3 py-1 rounded border border-slate-800">
+      <span class="text-slate-500 text-[10px]">ISA-18.2 ALARMS:</span>
+      <span id="master-alarm-critical" class="bg-red-950 text-red-400 font-bold px-1.5 py-0.5 rounded border border-red-800/80 text-[11px] tabular-nums">1 CRIT</span>
+      <span id="master-alarm-high" class="bg-amber-950 text-amber-400 font-bold px-1.5 py-0.5 rounded border border-amber-800/80 text-[11px] tabular-nums">3 HIGH</span>
+    </div>
+
+    <div class="flex items-center gap-4 text-slate-400">
+      <div class="text-right">
+        <span id="plant-clock" class="text-slate-200 font-bold tabular-nums">00:00:00 UTC</span>
+      </div>
+      <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-1 rounded border border-slate-700 font-bold">CONSOLE #04</span>
+    </div>
+  </header>
+
+  <!-- MAIN OPERATOR VIEWPORT -->
+  <main class="flex-1 overflow-hidden p-4">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- PERMANENT DCS FOOTER -->
+  <footer class="h-10 bg-[#090d14] border-t border-slate-800 px-4 flex items-center justify-between shrink-0 text-xs font-mono">
+    <div class="flex items-center gap-4 text-slate-400">
+      <span class="flex items-center gap-1.5">
+        <span class="h-2 w-2 rounded-full bg-sky-400"></span>
+        SYSTEM: METACOGNITIVE SUPERVISION ACTIVE
+      </span>
+      <span class="border-l border-slate-800 pl-4 text-slate-500">
+        LATENCY: <span id="ping-ms" class="text-slate-400 tabular-nums">14ms</span>
+      </span>
+    </div>
+
+  </footer>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('plant-clock').innerText = now.toISOString().substring(11, 19) + ' UTC';
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
