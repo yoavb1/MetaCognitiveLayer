@@ -25,7 +25,11 @@ SECRET_KEY = 'django-insecure-69mrx#n!r14&hgymi=*(%pdx)1vkb(2_5626f#2u_-e-7gyn*4
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'iwitlab.pythonanywhere.com',
+    'localhost',
+    '127.0.0.1',
+]
 
 
 # Application definition
