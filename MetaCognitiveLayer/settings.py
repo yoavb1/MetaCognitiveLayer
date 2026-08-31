@@ -29,6 +29,7 @@ ALLOWED_HOSTS = [
     'iwitlab.pythonanywhere.com',
     'localhost',
     '127.0.0.1',
+    'metacognitivelayer.onrender.com'
 ]
 
 
