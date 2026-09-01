@@ -8,13 +8,11 @@ https://docs.djangoproject.com/en/4.2/howto/deployment/asgi/
 """
 
 import os
-
-import experiment.routing
+from django.core.asgi import get_asgi_application
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'MetaCognitiveLayer.settings')
 
 # 2. Initialize Django ASGI application early
-from django.core.asgi import get_asgi_application
 django_asgi_app = get_asgi_application()
 
 # 3. Import channels routing AFTER get_asgi_application()
