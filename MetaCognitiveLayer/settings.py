@@ -66,6 +66,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://metacognitivelayer.onrender.com',
+]
+
 ROOT_URLCONF = 'MetaCognitiveLayer.urls'
 
 TEMPLATES = [
