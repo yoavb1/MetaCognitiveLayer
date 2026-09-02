@@ -41,26 +41,40 @@ def experiment_intro(request, participant_id):
     return render(request, 'experiment/intro.html', {'participant': participant})
 
 
+import random
+from django.shortcuts import render, redirect, get_object_or_404
+
 def experiment_instructions(request, participant_id):
-    """Detailed rules and UI controls explanation before starting"""
     participant = get_object_or_404(Participant, pk=participant_id)
 
+    # 1. On GET request: Pick condition once and store it in Django's session
+    if 'condition' not in request.session:
+        request.session['condition'] = random.choice(['FIXED_LOW', 'FIXED_MEDIUM', 'ADAPTIVE_META'])
+
+    condition = request.session['condition']
+
+    # 2. On POST request: Read condition from session and create the trial
     if request.method == 'POST':
         sequence = get_session_sequence()
         first_fault = sequence[0] if sequence else 'Disturbance_01'
-        condition = random.choice(['FIXED_LOW', 'FIXED_MEDIUM', 'ADAPTIVE_META'])
-        print(f"Condition: {condition}")
 
-        # Create or fetch the initial trial
         first_trial = Trial.objects.create(
             participant=participant,
             fault_code=first_fault,
             condition=condition,
             completed=False
         )
+
+        # Clear session key if you want a fresh condition for the next instructions page
+        # del request.session['condition']
+
         return redirect('trial_dashboard', trial_id=first_trial.id)
 
-    return render(request, 'experiment/instructions.html', {'participant': participant})
+    # 3. Render template with the condition from session
+    return render(request, 'experiment/instructions.html', {
+        'participant': participant,
+        'condition': condition,
+    })
 
 
 def start_experiment(request):
