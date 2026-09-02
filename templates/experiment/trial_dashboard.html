@@ -58,7 +58,7 @@
   {% endif %}
 
   <!-- HTMX ACTION RESPONSE FEEDBACK -->
-  <div id="action-response" class="min-h-[28px] text-xs text-center font-bold"></div>
+  <div id="action-response" class="min-h-[48px] w-full max-w-xl mx-auto my-2 text-center transition-all duration-300"></div>
 
   <!-- MAIN DASHBOARD GRID -->
   <main class="flex-1 flex flex-col justify-between space-y-4">
@@ -107,19 +107,21 @@
         🚨 Emergency Stop
       </button>
 
-      <!-- Hidden Form for Manual Alarm -->
-      <form id="form-alarm" hx-post="{% url 'submit_action' trial.id %}" hx-target="#action-response" class="hidden">
-        {% csrf_token %}
-        <input type="hidden" name="time_step" id="form-step-alarm" value="1">
-        <input type="hidden" name="action_type" value="RAISE_ALARM">
-      </form>
+        <!-- Hidden Form for Manual Alarm -->
+        <form id="form-alarm" hx-post="{% url 'submit_action' trial.id %}" hx-target="#action-response" class="hidden">
+          {% csrf_token %}
+          <input type="hidden" name="time_step" id="form-step-alarm" value="1">
+          <input type="hidden" name="has_fault" id="form-has-fault-alarm" value="false">
+          <input type="hidden" name="action_type" value="RAISE_ALARM">
+        </form>
 
-      <!-- Hidden Form for System Action (Approve / Override) -->
-      <form id="form-action" hx-post="{% url 'submit_action' trial.id %}" hx-target="#action-response" class="hidden">
-        {% csrf_token %}
-        <input type="hidden" name="time_step" id="form-step" value="1">
-        <input type="hidden" name="action_type" id="form-action-type" value="APPROVE">
-      </form>
+        <!-- Hidden Form for System Action (Approve / Override) -->
+        <form id="form-action" hx-post="{% url 'submit_action' trial.id %}" hx-target="#action-response" class="hidden">
+          {% csrf_token %}
+          <input type="hidden" name="time_step" id="form-step" value="1">
+          <input type="hidden" name="has_fault" id="form-has-fault" value="false">
+          <input type="hidden" name="action_type" id="form-action-type" value="APPROVE">
+        </form>
     </section>
   </main>
 
@@ -335,12 +337,55 @@
     const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
     const socket = new WebSocket(`${wsScheme}://${window.location.host}/ws/trial/{{ trial.id }}/`);
 
-    socket.onmessage = function(event) {
+socket.onmessage = function(event) {
       try {
         const data = JSON.parse(event.data);
 
+        // Update real-time step and ground-truth fault status across both forms
+        if (data.time_step !== undefined) {
+          const stepEl = document.getElementById('step-counter');
+          const formStep = document.getElementById('form-step');
+          const formStepAlarm = document.getElementById('form-step-alarm');
+
+          if (stepEl) stepEl.innerText = data.time_step;
+          if (formStep) formStep.value = data.time_step;
+          if (formStepAlarm) formStepAlarm.value = data.time_step;
+        }
+
+        if (data.has_fault !== undefined) {
+          const formFault = document.getElementById('form-has-fault');
+          const formFaultAlarm = document.getElementById('form-has-fault-alarm');
+
+          if (formFault) formFault.value = data.has_fault;
+          if (formFaultAlarm) formFaultAlarm.value = data.has_fault;
+        }
+
         if (data.trial_complete) {
-          window.location.href = data.next_url;
+          // Render feedback banner in the action-response element
+          const responseEl = document.getElementById('action-response');
+          if (responseEl) {
+            const hasFault = data.has_fault;
+            const bgStyle = hasFault
+              ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300'
+              : 'bg-rose-950/90 border-rose-500 text-rose-300';
+            const statusTitle = hasFault ? 'TRUE FAULT CONFIRMED' : 'FALSE ALARM / NOMINAL';
+            const detailText = hasFault
+              ? `Active fault scenario: ${data.fault_code || 'Anomaly Present'}.`
+              : 'No actual fault was present in the system.';
+
+            responseEl.innerHTML = `
+              <div class="p-3 border rounded shadow-lg text-xs animate-fade-in ${bgStyle}">
+                <div class="font-bold text-sm">RESULT: ${statusTitle}</div>
+                <div>${detailText}</div>
+                <div class="text-[10px] opacity-75 mt-1">Redirecting to next scenario...</div>
+              </div>
+            `;
+          }
+
+          // Pause briefly (2 seconds) so the operator can read the outcome before navigation
+          setTimeout(() => {
+            window.location.href = data.next_url;
+          }, 2000);
           return;
         }
 
@@ -431,6 +476,8 @@
         console.error("Error parsing WebSocket frame:", err);
       }
     };
+
+
   </script>
 </body>
 </html>

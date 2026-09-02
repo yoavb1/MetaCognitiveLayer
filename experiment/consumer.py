@@ -28,7 +28,6 @@ def load_master_csv():
     # Standardize SESSION_ID values
     if 'SESSION_ID' in df.columns:
         df['SESSION_ID'] = df['SESSION_ID'].astype(str).str.strip()
-        df['SESSION_ID'] = df['SESSION_ID'].replace({'d00': 'Disturbance_00', 'd0': 'Disturbance_00'})
 
     _CSV_CACHE = df
     return _CSV_CACHE
@@ -37,9 +36,7 @@ def load_master_csv():
 def get_session_sequence():
     """Extracts unique session IDs in order from CSV."""
     df = load_master_csv()
-    if 'SESSION_ID' in df.columns:
-        return list(df['SESSION_ID'].unique())
-    return ['Disturbance_01']
+    return list(df['SESSION_ID'].unique())
 
 
 class TrialConsumer(AsyncWebsocketConsumer):
@@ -136,6 +133,12 @@ class TrialConsumer(AsyncWebsocketConsumer):
                 return
 
             session_df = master_df[master_df['SESSION_ID'] == session_id].sort_values(step_col)
+            fault_rows = session_df[session_df['SYSTEM_GROUND_TRUTH_FAULT_ID'] != 0]
+
+            if not fault_rows.empty:
+                first_fault = fault_rows[step_col].iloc[0]
+            else:
+                first_fault = float('inf')
 
             if len(session_df) == 0:
                 print(f"❌ WARNING: CSV has 0 rows matching SESSION_ID '{session_id}'")
@@ -143,7 +146,7 @@ class TrialConsumer(AsyncWebsocketConsumer):
 
             for _, row in session_df.iterrows():
                 step_idx = int(row[step_col]) if step_col else 1
-
+                has_fault = bool(step_idx >= first_fault)
                 vars_data = {}
                 alarms = {}
 
@@ -190,6 +193,7 @@ class TrialConsumer(AsyncWebsocketConsumer):
 
                 payload = {
                     'time_step': step_idx,
+                    'has_fault': has_fault,
                     'vars': vars_data,
                     'alarms': alarms,
                     'situational_novelty': round(novelty, 2),
@@ -218,7 +222,12 @@ class TrialConsumer(AsyncWebsocketConsumer):
                 await sync_to_async(Trial.objects.filter(id=trial_id).update)(completed=True)
 
             # Trigger frontend redirect to next distribution
-            await self.send(text_data=json.dumps({'trial_complete': True, 'next_url': next_url}))
+            await self.send(text_data=json.dumps({
+                'trial_complete': True,
+                'next_url': next_url,
+                'has_fault': has_fault,
+                'fault_code': self.trial_data.get('fault_code', 'NOMINAL')
+            }))
 
         except asyncio.CancelledError:
             print("DEBUG: Stream task cancelled on disconnect.")

@@ -150,14 +150,20 @@ def submit_action(request, trial_id):
     sequence = get_session_sequence()
 
     action_type = request.POST.get('action_type')
+
     try:
         time_step = int(request.POST.get('time_step', 1))
     except (ValueError, TypeError) as e:
-        logger.warning(f"Invalid time_step received for trial {trial_id}: {request.POST.get('time_step')}. Defaulting to 1. Error: {e}")
+        logger.warning(
+            f"Invalid time_step received for trial {trial_id}: {request.POST.get('time_step')}. Defaulting to 1. Error: {e}")
         time_step = 1
 
+    # Receive has_fault directly from frontend submission (HTML/JS)
+    has_fault = request.POST.get('has_fault') == 'true'
+
     selected_root_cause = request.POST.get('selected_root_cause', '')
-    logger.info(f"Processing action_type: '{action_type}', time_step: {time_step}, selected_root_cause: '{selected_root_cause}' for trial {trial_id}")
+    logger.info(
+        f"Processing action_type: '{action_type}', time_step: {time_step}, has_fault: {has_fault}, selected_root_cause: '{selected_root_cause}' for trial {trial_id}")
 
     action_log = ActionLog.objects.create(
         trial=trial,
@@ -185,7 +191,6 @@ def submit_action(request, trial_id):
                 '⚠️ System intervention overridden. Authority reduced to LoA 2 (Manual Monitoring). You are now responsible for detecting anomalies.'
                 '</div>'
             )
-        logger.info(f"Returning JSON response for override in trial {trial_id}.")
         return JsonResponse({'success': True, 'message': 'Overridden. LoA reduced to 2.'})
 
     # -------------------------------------------------------------
@@ -198,17 +203,23 @@ def submit_action(request, trial_id):
         trial.save()
         logger.info(f"Trial {trial_id} marked as completed and inactive.")
 
-        has_fault = getattr(trial, 'has_fault', trial.fault_code != 'NOMINAL')
         fault_start_step = getattr(trial, 'fault_start_step', 10)
 
-        if action_type == 'RAISE_ALARM':
-            is_correct = has_fault
-            ttd_steps = max(0, time_step - fault_start_step) if is_correct else 0
-        else:  # APPROVE
-            is_correct = has_fault
-            ttd_steps = max(0, time_step - fault_start_step) if is_correct else 0
+        # Build dynamic feedback banner details
+        if has_fault:
+            feedback_class = "bg-emerald-950/90 border-emerald-500 text-emerald-300"
+            status_title = "TRUE FAULT CONFIRMED"
+            message = "Fault detected correctly!"
+        else:
+            feedback_class = "bg-rose-950/90 border-rose-500 text-rose-300"
+            status_title = "FALSE ALARM"
+            message = "No actual fault was present in the system (Nominal Operation)."
 
-        logger.info(f"Action evaluation for trial {trial_id}: has_fault={has_fault}, is_correct={is_correct}, ttd_steps={ttd_steps}")
+        is_correct = has_fault
+        ttd_steps = max(0, time_step - fault_start_step) if is_correct else 0
+
+        logger.info(
+            f"Action evaluation for trial {trial_id}: has_fault={has_fault}, is_correct={is_correct}, ttd_steps={ttd_steps}")
 
         try:
             curr_idx = sequence.index(trial.fault_code)
@@ -231,15 +242,19 @@ def submit_action(request, trial_id):
             next_url = reverse('nasa_tlx', kwargs={'participant_id': trial.participant.id})
 
         if request.headers.get('HX-Request'):
-            logger.info(f"Returning HTMX redirect to '{next_url}' for trial {trial_id}.")
-            response = HttpResponse('<div class="text-emerald-400 font-bold p-2">Loading next scenario...</div>')
-            response['HX-Redirect'] = next_url
-            return response
+            logger.info(f"Returning HTMX response with delayed redirect to '{next_url}' for trial {trial_id}.")
+            return HttpResponse(
+                f'<div class="p-3 border rounded shadow-lg text-sm animate-fade-in {feedback_class}">'
+                f'  <div class="font-bold text-base">RESULT: {status_title}</div>'
+                f'  <div>{message}</div>'
+                f'</div>'
+                f'<script>'
+                f'  setTimeout(function() {{ window.location.href = "{next_url}"; }}, 2500);'
+                f'</script>'
+            )
 
-        logger.info(f"Redirecting to '{next_url}' for trial {trial_id}.")
         return redirect(next_url)
 
-    logger.info(f"Standard action recorded for trial {trial_id}. Returning JSON response.")
     return JsonResponse({'success': True, 'message': 'Action recorded.'})
 
 def nasa_tlx(request, participant_id):
